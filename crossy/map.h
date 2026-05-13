@@ -11,17 +11,71 @@
 using namespace std;
 
 // ==============================
-// CONSOLE COLOR HELPER
+// ANSI COLOR HELPER
+// Much faster than Win32 API per-
+// character calls. Call once at
+// startup to enable VT sequences.
 // ==============================
+void enableANSI()
+{
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode  = 0;
+    GetConsoleMode(hOut, &mode);
+    SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+}
+
+// Map Win32 color index → ANSI fg code
+static const char* ANSI_FG[] = {
+    "\033[30m",   // 0  Black
+    "\033[34m",   // 1  Dark Blue
+    "\033[32m",   // 2  Dark Green
+    "\033[36m",   // 3  Dark Cyan
+    "\033[31m",   // 4  Dark Red
+    "\033[35m",   // 5  Dark Magenta
+    "\033[33m",   // 6  Dark Yellow
+    "\033[37m",   // 7  Light Grey
+    "\033[90m",   // 8  Dark Grey
+    "\033[94m",   // 9  Blue
+    "\033[92m",   // 10 Green
+    "\033[96m",   // 11 Cyan
+    "\033[91m",   // 12 Red
+    "\033[95m",   // 13 Magenta
+    "\033[93m",   // 14 Yellow
+    "\033[97m",   // 15 White
+};
+
+static const char* ANSI_BG[] = {
+    "\033[40m",   // 0  Black bg
+    "\033[44m",   // 1  Blue bg
+    "\033[42m",   // 2  Green bg
+    "\033[46m",   // 3  Cyan bg
+    "\033[41m",   // 4  Red bg
+};
+
+// Append color escape to a string buffer (no cout call)
+inline void appendColor(string& buf, int fg, int bg = 0)
+{
+    if (fg >= 0 && fg < 16) buf += ANSI_FG[fg];
+    if (bg >= 1 && bg <= 4) buf += ANSI_BG[bg];
+    else if (bg == 0)       buf += "\033[40m";
+}
+
+inline void appendReset(string& buf)
+{
+    buf += "\033[0m";
+}
+
+// Legacy wrappers kept so death animation & game-over still compile
 void setColor(int fg, int bg = 0)
 {
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),
-                            (WORD)((bg << 4) | fg));
+    if (fg >= 0 && fg < 16)   cout << ANSI_FG[fg];
+    if (bg >= 1 && bg <= 4)   cout << ANSI_BG[bg];
+    else if (bg == 0)         cout << "\033[40m";
 }
 
 void resetColor()
 {
-    setColor(7, 0); // default: light grey on black
+    cout << "\033[0m";
 }
 
 // Windows console color constants (foreground)
@@ -339,7 +393,10 @@ void placePlayer(Node* head,
 }
 
 // ==============================
-// DISPLAY ROAD (with color)
+// DISPLAY ROAD (buffered, fast)
+// Builds entire frame into one
+// string then flushes once —
+// eliminates per-char API calls.
 // ==============================
 void displayRoad(Node* head,
                  int lives,
@@ -352,101 +409,64 @@ void displayRoad(Node* head,
     cursorPosition.Y = 0;
     SetConsoleCursorPosition(hConsole, cursorPosition);
 
-    // Header
-    setColor(15, 0); // white
-    cout << "---------- Road Crossing Challenge ----------\n";
+    // Reserve ~4 KB up front to avoid reallocs
+    string buf;
+    buf.reserve(4096);
 
-    setColor(14, 0); // yellow
-    cout << "Player: " << playerName;
-    setColor(12, 0); // red
-    cout << " | Lives: " << lives;
-    setColor(10, 0); // green
-    cout << " | Crossings: " << crossings;
-    resetColor();
-    cout << "   " << endl;
+    // ---- Header (written into buf) ----
+    appendColor(buf, 15, 0);
+    buf += "---------- Road Crossing Challenge ----------\n";
+    appendColor(buf, 14, 0);
+    buf += "Player: ";
+    buf += playerName;
+    appendColor(buf, 12, 0);
+    buf += " | Lives: ";
+    buf += to_string(lives);
+    appendColor(buf, 10, 0);
+    buf += " | Crossings: ";
+    buf += to_string(crossings);
+    appendReset(buf);
+    buf += "   \n";
 
+    // ---- Lanes ----
     Node* temp = head;
-
     while (temp != NULL)
     {
         const string& lane = temp->lane;
         int zone = temp->zoneType;
 
-        // Print border character '|'
-        setColor(7, 0);
-        cout << lane[0];
+        appendColor(buf, 7, 0);
+        buf += lane[0];
 
-        // Print each interior cell with appropriate color
         for (int i = 1; i < (int)lane.size() - 1; i++)
         {
             char c = lane[i];
-
-            if (c == 'P')
+            switch (c)
             {
-                // Player: bright white on blue
-                setColor(15, 1);
-                cout << c;
+            case 'P': appendColor(buf, 15, 1); break;
+            case '#': appendColor(buf, 12, 0); break;
+            case '~': appendColor(buf, 11, 0); break;
+            case '=': appendColor(buf, (zone == 3) ? 6 : 10, 0); break;
+            case '.': appendColor(buf, (zone == 1) ? 8 : 2, 0);  break;
+            default:  appendReset(buf); break;
             }
-            else if (c == '#')
-            {
-                // Truck obstacle: bright red
-                setColor(12, 0);
-                cout << c;
-            }
-            else if (c == '~')
-            {
-                // River water: bright cyan
-                setColor(11, 0);
-                cout << c;
-            }
-            else if (c == '=')
-            {
-                if (zone == 3)
-                {
-                    // Log on river: dark yellow / brown
-                    setColor(6, 0);
-                    cout << c;
-                }
-                else
-                {
-                    // Finish line '=': bright green
-                    setColor(10, 0);
-                    cout << c;
-                }
-            }
-            else if (c == '.')
-            {
-                if (zone == 1)
-                {
-                    // Road surface: dark grey
-                    setColor(8, 0);
-                    cout << c;
-                }
-                else
-                {
-                    // Grass / buffer: dark green
-                    setColor(2, 0);
-                    cout << c;
-                }
-            }
-            else
-            {
-                resetColor();
-                cout << c;
-            }
+            buf += c;
         }
 
-        // Print closing border
-        setColor(7, 0);
-        cout << lane[lane.size() - 1];
-
-        resetColor();
-        cout << endl;
+        appendColor(buf, 7, 0);
+        buf += lane[lane.size() - 1];
+        appendReset(buf);
+        buf += '\n';
 
         temp = temp->next;
     }
 
-    resetColor();
+    appendReset(buf);
+
+    // Single write for the whole frame — no per-char API calls
+    cout.write(buf.c_str(), buf.size());
+    cout.flush();
+
 }
 
 // ==============================

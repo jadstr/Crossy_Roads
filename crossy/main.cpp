@@ -61,11 +61,11 @@ int showMainMenu(string& playerName)
     switch (choice)
     {
     case 1:
-        delay = 180;
+        delay = 200;
         cout << "\nDifficulty: Easy\n";
         break;
     case 2:
-        delay = 120;
+        delay = 150;
         cout << "\nDifficulty: Medium\n";
         break;
     case 3:
@@ -89,6 +89,9 @@ int showMainMenu(string& playerName)
 int main()
 {
     SetConsoleOutputCP(CP_UTF8);
+
+    // Enable ANSI escape sequences (required for buffered color rendering)
+    enableANSI();
 
     string playerName;
     int sleepDelay = showMainMenu(playerName);

@@ -352,7 +352,7 @@ void displayRoad(Node* head,
 
     gotoxy(startX, startY);
 
-    setColor(11, 0);
+    setColor(15, 0);
     cout << "        R O A D  C R O S S I N G";
 
     gotoxy(13, startY + 1);
@@ -540,7 +540,7 @@ void playDeathAnimation(Node* head,
             int startY = 2;
 
             gotoxy(startX, startY);
-            setColor(11, 0);
+            setColor(15, 0);
             cout << "        R O A D  C R O S S I N G";
 
             gotoxy(13, startY + 1);

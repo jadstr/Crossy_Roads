@@ -20,6 +20,7 @@ void gotoxy(int x, int y) {
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
 }
 
+//to set colors
 void color(int color) {
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
 }
@@ -233,7 +234,7 @@ void leaderScreen() {
     for (int i = 0; i < limit; i++) {
 
         string text =
-            to_string(i + 1) + ". " + players[i].playerName + " - SCORE: " + to_string(players[i].score);
+            to_string(i + 1) + ". " + players[i].playerName + " - CROSSINGS: " + to_string(players[i].score);
 
         printCentered(text);
     }
@@ -249,10 +250,7 @@ void exitScreen() {
 
     printCentered("T H A N K   Y O U   F O R   P L A Y I N G !", 15);
     emptyLine();
-    printCentered("G O O D B Y E   P L A Y E R !", 15);
-
-    emptyLine();
-    printCentered("S E E   Y O U   A G A I N !", 15);
+    printCentered("G O O D B Y E   P L A Y E R ! :)", 15);
 
     emptyLine();
     emptyLine();
@@ -361,29 +359,40 @@ void clearGameArea() {
 }
 
 void gameOverScreen(const string& playerName, int crossings) {
-
     system("cls");
     line();
     title();
 
     printCentered("G A M E   O V E R", 12);
-
     emptyLine();
-
-    printCentered("T H A N K   Y O U   F O R   P L A Y I N G !", 15);
-
-    emptyLine();
-
     printCentered("P L A Y E R : " + playerName, 14);
-
     printCentered("T O T A L   C R O S S I N G S : " + to_string(crossings), 10);
-
-    emptyLine();
     emptyLine();
 
-    printCentered("P R E S S   A N Y   K E Y   T O   R E T U R N", 15);
-    emptyLine();
+    //to show leaderboard only
+    printCentered(" L E A D E R B O A R D:");
+    printCentered(" ");
 
+    vector<playerLeaderboard> players = loadLeaderboard();
+
+    int limit;
+
+    if (players.size() < 5)
+        limit = players.size();
+    else
+        limit = 5;
+
+    for (int i = 0; i < limit; i++) {
+
+        string text =
+            to_string(i + 1) + ". " + players[i].playerName + " - CROSSINGS: " + to_string(players[i].score);
+
+        printCentered(text);
+    }
+
+    emptyLine();
+    printCentered("(P R E S S   A N Y   K E Y   T O   R E T U R N   M E N U...)");
+    emptyLine();
     line();
 
     console("####", "####", "####");
